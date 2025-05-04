@@ -315,3 +315,75 @@
         (ok true)
     )
 )
+
+;; Gets current price from oracle
+(define-private (get-current-price)
+    (get price (unwrap! (map-get? price-feeds "BTC-USD") u0))
+)
+
+;; Helper to get option ID
+(define-private (get-option-id (option {
+        writer: principal,
+        holder: (optional principal),
+        collateral-amount: uint,
+        strike-price: uint,
+        premium: uint,
+        expiry: uint,
+        is-exercised: bool,
+        option-type: (string-ascii 4),
+        state: (string-ascii 9)
+    }))
+    (var-get next-option-id)
+)
+
+;; Checks if token is in approved list
+(define-private (is-approved-token (token principal))
+    (default-to false (map-get? approved-tokens token))
+)
+
+;; Checks if price feed symbol is allowed
+(define-private (is-allowed-symbol (symbol (string-ascii 10)))
+    (default-to false (map-get? allowed-symbols symbol))
+)
+
+;; Validates principal address
+(define-private (is-valid-principal (address principal))
+    (and 
+        (not (is-eq address (as-contract tx-sender)))  ;; Can't be the contract itself
+        (not (is-eq address .base))                    ;; Can't be base contract
+        (not (is-eq address tx-sender))                ;; Can't be the owner (prevent self-targeting)
+        true
+    )
+)
+
+;; Validates symbol string
+(define-private (is-valid-symbol (symbol (string-ascii 10)))
+    (and
+        (not (is-eq symbol ""))     ;; Can't be empty
+        (not (is-eq symbol " "))    ;; Can't be just whitespace
+        (>= (len symbol) u2)        ;; Must be at least 2 chars
+    )
+)
+
+;; Checks if token is critical to platform operation
+(define-private (is-critical-token (token principal))
+    (or 
+        (is-eq token .wrapped-btc)
+        (is-eq token .wrapped-stx)
+    )
+)
+
+;; Checks if symbol is critical to platform operation
+(define-private (is-critical-symbol (symbol (string-ascii 10)))
+    (or
+        (is-eq symbol "BTC-USD")
+        (is-eq symbol "STX-USD")
+    )
+)
+
+;; READ-ONLY FUNCTIONS
+
+;; Gets details for an option
+(define-read-only (get-option (option-id uint))
+    (map-get? options option-id)
+)
